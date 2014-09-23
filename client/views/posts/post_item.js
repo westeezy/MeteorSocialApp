@@ -1,3 +1,6 @@
+var POST_HEIGHT = 80;
+var Positions = new Meteor.Collection(null);
+
 Template.postItem.helpers({
   ownPost: function() {
     return this.userId == Meteor.userId();
@@ -14,35 +17,28 @@ Template.postItem.helpers({
     } else {
       return 'disabled';
     }
+  },
+  attributes: function() {
+    var post = _.extend({}, Positions.findOne({postId: this._id}), this);
+    var newPosition = post._rank * POST_HEIGHT;
+    var attributes = {};
+    
+    if (_.isUndefined(post.position)) {
+      attributes.class = 'post invisible';
+    } else {
+      var delta = post.position - newPosition;      
+      attributes.style = "top: " + delta + "px";
+      if (delta === 0)
+        attributes.class = "post animate"
+    }
+    
+    Meteor.setTimeout(function() {
+      Positions.upsert({postId: post._id}, {$set: {position: newPosition}})
+    });
+    
+    return attributes;
   }
 });
-
-Template.postItem.rendered = function(){
-  // animate post from previous position to new position
-  var instance = this;
-  var rank = instance.data._rank;
-  var $this = $(this.firstNode);
-  var postHeight = 80;
-  var newPosition = rank * postHeight;
-  
-  // if element has a currentPosition (i.e. it's not the first ever render)
-  if (typeof(instance.currentPosition) !== 'undefined') {
-    var previousPosition = instance.currentPosition;
-    // calculate difference between old position and new position and send element there
-    var delta = previousPosition - newPosition;
-    $this.css("top", delta + "px");
-  } else {
-    // it's the first ever render, so hide element
-    $this.addClass("invisible");
-  }
-  
-  // let it draw in the old position, then..
-  Meteor.defer(function() {
-    instance.currentPosition = newPosition;
-    // bring element back to its new original position
-    $this.css("top",  "0px").removeClass("invisible");
-  }); 
-};
 
 Template.postItem.events({
   'click .upvotable': function(e) {
